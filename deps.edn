@@ -1,0 +1,9 @@
+{:paths ["src"]
+ :deps {com.github.flow-storm/hansel {:mvn/version "0.1.79"}}
+ :aliases {:dev {:classpath-overrides {org.clojure/clojure nil}
+                 :extra-paths ["dev"]
+                 :extra-deps {com.github.flow-storm/clojure {:mvn/version "1.11.1-14"}}
+                 :jvm-opts ["-Dclojure.storm.instrumentEnable=true"
+                            "-Dclojure.storm.instrumentOnlyPrefixes=dev-tester"]}
+           :build {:extra-deps {io.github.clojure/tools.build {:git/tag "v0.9.6" :git/sha "8e78bcc"}}
+                   :ns-default build}}}
