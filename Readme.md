@@ -89,3 +89,9 @@ Hitted sub-expressions will be highlighted in green while hittable but not hit o
 Skimming over the red ones should give you an overview of uncovered conditional branches, uncovered functions signatures, etc.
 
 
+#### Which forms are included in the report?
+
+By default only forms with the first symbol name being one of : `defn`, `defn-`, `defmethod`, `extend-type`, `extend-protocol`, `deftype` and `defrecord`.
+
+If you have other types of forms like the ones defined by some macros, you can include them by using `:extra-forms` in the configuration 
+parameters. It takes a set of symbols like `:extra-forms #{defroutes my-macro}`.
