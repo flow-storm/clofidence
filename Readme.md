@@ -20,8 +20,8 @@ Add an alias to your `deps.edn` like this :
  :aliases 
  {...
   :clofidence {:classpath-overrides {org.clojure/clojure nil}
-               :extra-deps {com.github.flow-storm/clojure {:mvn/version "LATEST-VERSION"}
-                            com.github.flow-storm/clofidence {:mvn/version "LATEST-VERSION"}}
+               :extra-deps {com.github.flow-storm/clojure {:mvn/version "1.11.1-14"}
+                            com.github.flow-storm/clofidence {:mvn/version "0.1.0"}}
                :exec-fn clofidence.main/run
                :exec-args {:report-name "MyApp"
                            :test-fn cognitect.test-runner.api/test
@@ -29,6 +29,8 @@ Add an alias to your `deps.edn` like this :
                :jvm-opts ["-Dclojure.storm.instrumentOnlyPrefixes=my-app"
                           "-Dclojure.storm.instrumentSkipPrefixes=my-app.unwanted-ns1,my-app.unwanted-ns2"]}}}
 ```
+
+Please make sure you have the latest versions of ClojureStorm and Clofidence.
 
 With __Clofidence__ configured, every time you want to generate a coverage report you run :
 
