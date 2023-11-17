@@ -2,7 +2,7 @@
   (:require [clojure.pprint :as pp]
             [hansel.utils :as hansel-utils]))
 
-(defn normalize-newlines [s]
+(defn normalize-newlines [^String s]
      (-> s
          (.replaceAll "\\r\\n" "\n")
          (.replaceAll "\\r" "\n")))

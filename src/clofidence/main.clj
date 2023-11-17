@@ -6,15 +6,43 @@
   (:require [clojure.string :as str]
             [clojure.set :as set]
             [clofidence.form-pprinter :as form-pprinter])
-  (:import [clojure.storm Tracer FormRegistry Emitter]))
+  (:import [clojure.storm Tracer FormRegistry Emitter]
+           [java.util HashMap HashSet]))
 
 (def default-interesting-forms
   #{'defn 'defn- 'defmethod 'extend-type 'extend-protocol
     'deftype 'defrecord})
 
 (def coords-coverage
-  "A map of form-id to a set of coordinates"
-  (atom {}))
+  "A map of form-id to a set of coordinates.
+  This var uses a mutable HashMap and HashSet for performance so
+  only use `hit-form-coord` to add and `immutable-coords-coverage` to
+  read it."
+  (HashMap.))
+
+(defn- hit-form-coord [form-id coord]
+  (let [^HashSet form-coords (locking coords-coverage
+                               (if (.containsKey ^HashMap coords-coverage form-id)
+                                 (.get ^HashMap coords-coverage form-id)
+                                 (let [form-coords (HashSet.)]
+                                   (.put ^HashMap coords-coverage form-id form-coords)
+                                   form-coords)))]
+    (locking form-coords
+      (.add form-coords coord))))
+
+(defn- immutable-coords-coverage []
+  (locking coords-coverage
+    (persistent!
+     (reduce-kv (fn [r form-id form-coords]
+                  (let [imm-coords (locking form-coords
+                                     (persistent!
+                                      (reduce (fn [imc coord]
+                                                (conj! imc coord))
+                                              (transient #{})
+                                              form-coords)))]
+                    (assoc! r form-id imm-coords)))
+                (transient {})
+                coords-coverage))))
 
 (def report-styles
   "body {font-family: sans; background-color: #3f474f; color: #c9d1d9}
@@ -32,14 +60,18 @@
    .ns-overview-text {position: absolute; top: 3px; left: 3px;}
 ")
 
-(defn trace-expr [form-id coord]
-  (swap! coords-coverage update form-id (fnil conj #{}) coord))
 
 (defn setup-storm []
+  (Emitter/setInstrumentationEnable true)
+
+  (Emitter/setFnCallInstrumentationEnable false)
+  (Emitter/setFnReturnInstrumentationEnable true)
+  (Emitter/setExprInstrumentationEnable true)
+  (Emitter/setBindInstrumentationEnable false)
+
   (Tracer/setTraceFnsCallbacks
-   {:trace-expr-fn (fn [_ _ coord form-id] (trace-expr form-id coord))
-    :trace-fn-return-fn (fn [_ _ coord form-id] (trace-expr form-id coord))})
-  (Emitter/setInstrumentationEnable true))
+   {:trace-expr-fn (fn [_ _ coord form-id] (hit-form-coord form-id coord))
+    :trace-fn-return-fn (fn [_ _ coord form-id] (hit-form-coord form-id coord))}))
 
 (defn interesting-forms [interesting-first-symbol]
   (reduce (fn [r {:keys [form/id form/form] :as frm}]
@@ -182,7 +214,7 @@
   - :debug?
   - :extra-forms #{my-def-macro defroute}"
 
-  [{:keys [test-fn test-fn-args report-name extra-forms debug? details?]
+  [{:keys [test-fn test-fn-args report-name extra-forms debug?]
     :or {test-fn-args []}
     :as opts}]
   (setup-storm)
@@ -192,22 +224,17 @@
     (apply tfn test-fn-args))
   (println "Tests done. Building and saving report...")
 
-  (let [coords-cov @coords-coverage
+  (let [coords-cov (immutable-coords-coverage)
         all-registered-forms (interesting-forms (into default-interesting-forms extra-forms))]
     (save report-name {:details-str  (print-report-to-string (make-report all-registered-forms coords-cov) opts)
                        :debug-str    (when debug? (pr-str coords-cov))}))
   (println "All done."))
 
 (comment
-  (def frm (:form/form (get (interesting-forms default-interesting-forms) 1310453736)))
-  (meta frm)
-
-  (def toks (form-pprinter/pprint-tokens (:form/form (get (interesting-forms default-interesting-forms) 1310453736))))
-  (get @coords-coverage 1310453736)
   (require '[dev-tester])
 
 
   (interesting-forms default-interesting-forms)
-(run {:test-fn 'dev-tester/run-test
+  (run {:test-fn 'dev-tester/run-test
         :report-name "dev-tester"})
   )
