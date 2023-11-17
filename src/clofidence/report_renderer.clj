@@ -44,8 +44,12 @@
                                       (apply max))]
     (println "<div class=\"overview\">")
     (doseq [[ns-name {:keys [ns-sub-form-hits ns-hittable-sub-forms-cnt]}] forms-details-by-ns]
-      (let [coverded-perc (int (* 100 (/ ns-sub-form-hits ns-hittable-sub-forms-cnt)))
-            ns-bar-scale (/ ns-hittable-sub-forms-cnt biggest-ns-sub-forms-cnt)
+      (let [coverded-perc (if-not (pos? ns-hittable-sub-forms-cnt)
+                            0
+                            (int (* 100 (/ ns-sub-form-hits ns-hittable-sub-forms-cnt))))
+            ns-bar-scale (if-not (pos? biggest-ns-sub-forms-cnt)
+                           0.0
+                           (/ ns-hittable-sub-forms-cnt biggest-ns-sub-forms-cnt))
             ns-bar-width-px (int (utils/lerp min-bar-width-px max-bar-width-px ns-bar-scale))]
         (println (format "<div class=\"ns-total\" style=\"width: %dpx\">" ns-bar-width-px))
         (println (format "<span class=\"ns-overview-text\">%s (%d%%)</span>" ns-name coverded-perc))
@@ -58,8 +62,12 @@
                                       total-sub-forms total-sub-forms-hits]}
                               {:keys [report-name details?]
                                :or {details? true}}]
-  (let [forms-hit-rate (float (/ total-forms-hitted total-forms))
-        sub-forms-hit-rate (float (/ total-sub-forms-hits total-sub-forms))]
+  (let [forms-hit-rate (if-not (pos? total-forms)
+                         0.0
+                         (float (/ total-forms-hitted total-forms)))
+        sub-forms-hit-rate (if-not (pos? total-sub-forms)
+                             0.0
+                             (float (/ total-sub-forms-hits total-sub-forms)))]
     (with-out-str
       (println "<html>")
       (println (format "<head><style>%s</style></head>" report-styles))
@@ -74,7 +82,9 @@
       (when details?
         (doseq [[ns-name ns-details] forms-details-by-ns]
           (let [{:keys [ns-sub-form-hits ns-hittable-sub-forms-cnt forms-hits]} ns-details
-                ns-hit-rate (float (/ ns-sub-form-hits ns-hittable-sub-forms-cnt))]
+                ns-hit-rate (if-not (pos? ns-hittable-sub-forms-cnt)
+                              0.0
+                              (float (/ ns-sub-form-hits ns-hittable-sub-forms-cnt)))]
             (println (format "<div><b>%s %d/%d (%.1f%%)</b>" ns-name ns-sub-form-hits ns-hittable-sub-forms-cnt (* 100 ns-hit-rate)))
             (doseq [form-detail forms-hits]
               (print-form-html form-detail)))))

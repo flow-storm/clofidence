@@ -6,13 +6,10 @@
   (:require [clojure.string :as str]
             [clojure.set :as set]
             [clofidence.form-pprinter :as form-pprinter]
+            [clofidence.utils :as utils]
             [clofidence.report-renderer :as renderer])
   (:import [clojure.storm Tracer FormRegistry Emitter]
            [java.util HashMap HashSet]))
-
-(def default-interesting-forms
-  #{'defn 'defn- 'defmethod 'extend-type 'extend-protocol
-    'deftype 'defrecord})
 
 (def coords-coverage
   "A map of form-id to a set of coordinates.
@@ -45,7 +42,7 @@
                 (transient {})
                 coords-coverage))))
 
-(defn setup-storm []
+(defn- setup-storm []
   (Emitter/setInstrumentationEnable true)
 
   (Emitter/setFnCallInstrumentationEnable false)
@@ -57,24 +54,54 @@
    {:trace-expr-fn (fn [_ _ coord form-id] (hit-form-coord form-id coord))
     :trace-fn-return-fn (fn [_ _ coord form-id] (hit-form-coord form-id coord))}))
 
-(defn interesting-forms [interesting-first-symbol]
-  (reduce (fn [r {:keys [form/id form/form] :as frm}]
-            (if (and (seq? form)
-                     (symbol? (first form))
-                     (interesting-first-symbol (symbol (name (first form)))))
-              (assoc r id frm)
-              r))
-          {}
-          (FormRegistry/getAllForms)))
+(defn- interesting-forms
+
+  "Retrieve and select the forms that will be added to the report"
+
+  [{:keys [extra-forms block-forms]}]
+  (let [;; This is super hacky and should be solved in ClojureStorm.
+        ;; It is currently registering all forms under the namespace,
+        ;; which also contains forms added by Clojure that aren't found
+        ;; on user's source code, and we don't want them to show up on
+        ;; the reports.
+        default-blocked-forms #{"var" "ns" "if" ".resetMeta" "def"
+                                "." "defprotocol" "quote" "comment"}
+        blocked-forms (when block-forms
+                        (into default-blocked-forms (map name block-forms)))
+
+        interesting-symbs (into #{"defn" "defn-" "defmethod" "extend-type" "extend-protocol"
+                                  "deftype" "defrecord"}
+                                (map name extra-forms))
+
+        interesting-form? (if block-forms
+                            (fn [form]
+                              (when-let [symb (utils/first-symb form)]
+                                (let [symb-ns (namespace symb)
+                                      symb-name (name symb)]
+                                  (and (not= symb-ns "clojure.core")
+                                       (or (not (contains? blocked-forms symb-name))
+                                           (utils/def-fn? form))))))
+
+                            (fn [form]
+                              (when-let [symb (utils/first-symb form)]
+                                (let [symb-name (name symb)]
+                                  (or (interesting-symbs symb-name)
+                                      (utils/def-fn? form))))))]
+    (reduce (fn [r {:keys [form/id form/form] :as frm}]
+              (if (interesting-form? form)
+                (assoc r id frm)
+                r))
+            {}
+            (FormRegistry/getAllForms))))
 
 (defn- stringify-coord [coord-vec]
   (str/join "," coord-vec))
 
-(defn make-report [all-registered-forms coords-cov]
+(defn- make-report [all-registered-forms coords-cov]
   (let [registered-forms-ids (into #{} (keys all-registered-forms))
         covered-forms-ids (into #{} (keys coords-cov))
         processed-forms (->> all-registered-forms
-                             (mapv (fn [[form-id {:keys [form/ns form/form]}]]
+                             (keep (fn [[form-id {:keys [form/ns form/form]}]]
                                      (let [coords-hits (get coords-cov form-id)
                                            coords-hittable (-> form meta :clojure.storm/emitted-coords)
                                            form-tokens (->> (form-pprinter/pprint-tokens form)
@@ -90,14 +117,16 @@
                                                                         token)))))
                                            sub-form-hittable-cnt (count coords-hittable)
                                            sub-form-hits-cnt (count (keys coords-hits))]
-                                       {:tokens form-tokens
-                                        :form-id form-id
-                                        :sub-form-hits-cnt     sub-form-hits-cnt
-                                        :sub-form-hittable-cnt sub-form-hittable-cnt
-                                        :hit-rate (if (pos? sub-form-hittable-cnt)
-                                                    (float (/ sub-form-hits-cnt sub-form-hittable-cnt))
-                                                    0.0)
-                                        :ns ns}))))
+                                       (when (pos? sub-form-hittable-cnt)
+                                         {:tokens form-tokens
+                                          :form-id form-id
+                                          :sub-form-hits-cnt     sub-form-hits-cnt
+                                          :sub-form-hittable-cnt sub-form-hittable-cnt
+                                          :hit-rate (if (pos? sub-form-hittable-cnt)
+                                                      (float (/ sub-form-hits-cnt sub-form-hittable-cnt))
+                                                      0.0)
+                                          :ns ns}))))
+                             (doall))
         by-ns (update-vals (group-by :ns processed-forms)
                            (fn [forms]
                              {:forms-hits (sort-by :hit-rate > forms)
@@ -116,7 +145,7 @@
 
 
 
-(defn save [file-name {:keys [details-str debug-str]}]
+(defn- save [file-name {:keys [details-str debug-str]}]
   (when details-str  (spit (format "%s-coverage.html" file-name) details-str))
   (when debug-str    (spit (format "%s.edn"          file-name) debug-str)))
 
@@ -131,7 +160,7 @@
   - :debug?
   - :extra-forms #{my-def-macro defroute}"
 
-  [{:keys [test-fn test-fn-args report-name extra-forms debug?]
+  [{:keys [test-fn test-fn-args report-name debug?]
     :or {test-fn-args []}
     :as opts}]
   (setup-storm)
@@ -142,7 +171,7 @@
   (println "Tests done. Building and saving report...")
 
   (let [coords-cov (immutable-coords-coverage)
-        all-registered-forms (interesting-forms (into default-interesting-forms extra-forms))]
+        all-registered-forms (interesting-forms opts)]
     (save report-name {:details-str  (renderer/print-report-to-string (make-report all-registered-forms coords-cov) opts)
                        :debug-str    (when debug? (pr-str coords-cov))}))
   (println "All done."))
@@ -151,7 +180,9 @@
   (require '[dev-tester])
 
 
-  (interesting-forms default-interesting-forms)
+  (interesting-forms {})
   (run {:test-fn 'dev-tester/run-test
-        :report-name "dev-tester"})
+        :report-name "dev-tester"
+        ;;:block-forms #{'defn}
+        })
   )

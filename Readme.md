@@ -94,7 +94,15 @@ Skimming over the red ones should give you an overview of uncovered conditional 
 
 #### Which forms are included in the report?
 
-By default only forms with the first symbol name being one of : `defn`, `defn-`, `defmethod`, `extend-type`, `extend-protocol`, `deftype` and `defrecord`.
+By default, only forms with the first symbol name being one of : `defn`, `defn-`, `defmethod`, `extend-type`, `extend-protocol`, `deftype`, `defrecord` 
+and `def` forms which define functions will be included.
 
-If you have other types of forms like the ones defined by some macros, you can include them by using `:extra-forms` in the configuration 
-parameters. It takes a set of symbols like `:extra-forms #{defroutes my-macro}`.
+If you have other types of forms (like the ones defined by some macros), you can include them by using `:extra-forms` in the configuration 
+parameters. It takes a set of symbols like `:extra-forms #{defroutes}`.
+
+If instead of using the default and allowing some extra forms you prefer the other way around, you can use the `:block-forms` config.
+If you config it like `:block-forms #{}`, all forms will be included (with the exception of a few, see next) and you can block some
+by adding them to the set, like `:block-forms #{my-annoying-form}`.
+
+Even with `:block-forms #{}` there are some forms which are always excluded, which are `ns`, `defprotocol`, `quote`, `comment`, `def` with constants
+which doesn't make sense.
