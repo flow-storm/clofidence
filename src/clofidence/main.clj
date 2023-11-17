@@ -100,33 +100,34 @@
 (defn- make-report [all-registered-forms coords-cov]
   (let [registered-forms-ids (into #{} (keys all-registered-forms))
         covered-forms-ids (into #{} (keys coords-cov))
-        processed-forms (->> all-registered-forms
-                             (keep (fn [[form-id {:keys [form/ns form/form]}]]
-                                     (let [coords-hits (get coords-cov form-id)
-                                           coords-hittable (-> form meta :clojure.storm/emitted-coords)
-                                           form-tokens (->> (form-pprinter/pprint-tokens form)
-                                                            (mapv (fn [{:keys [coord kind] :as token}]
-                                                                    (let [coord (when coord (stringify-coord coord))]
-                                                                      (if (= kind :text)
-                                                                        (assoc token
-                                                                               :cover-type
-                                                                               (cond
-                                                                                 (contains? coords-hits coord)     :hit
-                                                                                 (contains? coords-hittable coord) :hittable
-                                                                                 :else                             :non-hittable))
-                                                                        token)))))
-                                           sub-form-hittable-cnt (count coords-hittable)
-                                           sub-form-hits-cnt (count (keys coords-hits))]
-                                       (when (pos? sub-form-hittable-cnt)
-                                         {:tokens form-tokens
-                                          :form-id form-id
-                                          :sub-form-hits-cnt     sub-form-hits-cnt
-                                          :sub-form-hittable-cnt sub-form-hittable-cnt
-                                          :hit-rate (if (pos? sub-form-hittable-cnt)
-                                                      (float (/ sub-form-hits-cnt sub-form-hittable-cnt))
-                                                      0.0)
-                                          :ns ns}))))
-                             (doall))
+        process-form (fn [x]
+                       (let [[form-id {:keys [form/ns form/form]}] x
+                             coords-hits (get coords-cov form-id)
+                             coords-hittable (-> form meta :clojure.storm/emitted-coords)
+                             form-tokens (->> (form-pprinter/pprint-tokens form)
+                                              (mapv (fn [{:keys [coord kind] :as token}]
+                                                      (let [coord (when coord (stringify-coord coord))]
+                                                        (if (= kind :text)
+                                                          (assoc token
+                                                                 :cover-type
+                                                                 (cond
+                                                                   (contains? coords-hits coord)     :hit
+                                                                   (contains? coords-hittable coord) :hittable
+                                                                   :else                             :non-hittable))
+                                                          token)))))
+                             sub-form-hittable-cnt (count coords-hittable)
+                             sub-form-hits-cnt (count (keys coords-hits))]
+                         (when (pos? sub-form-hittable-cnt)
+                           {:tokens form-tokens
+                            :form-id form-id
+                            :sub-form-hits-cnt     sub-form-hits-cnt
+                            :sub-form-hittable-cnt sub-form-hittable-cnt
+                            :hit-rate (if (pos? sub-form-hittable-cnt)
+                                        (float (/ sub-form-hits-cnt sub-form-hittable-cnt))
+                                        0.0)
+                            :ns ns})))
+        processed-forms (into [] (keep process-form) all-registered-forms)
+
         by-ns (update-vals (group-by :ns processed-forms)
                            (fn [forms]
                              {:forms-hits (sort-by :hit-rate > forms)
@@ -171,9 +172,11 @@
   (println "Tests done. Building and saving report...")
 
   (let [coords-cov (immutable-coords-coverage)
-        all-registered-forms (interesting-forms opts)]
-    (save report-name {:details-str  (renderer/print-report-to-string (make-report all-registered-forms coords-cov) opts)
-                       :debug-str    (when debug? (pr-str coords-cov))}))
+        all-registered-forms (interesting-forms opts)
+        report (make-report all-registered-forms coords-cov)
+        report-render (renderer/render-report-to-string report opts)]
+    (save report-name {:details-str report-render
+                       :debug-str   (when debug? (pr-str coords-cov))}))
   (println "All done."))
 
 (comment

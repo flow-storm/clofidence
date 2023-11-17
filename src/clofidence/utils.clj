@@ -17,3 +17,14 @@
   (when (and (seq? form)
              (symbol? (first form)))
     (first form)))
+
+(defn render-str [^StringBuilder sb format-str & format-args]
+  (if (seq format-args)
+    (.append sb (apply format format-str format-args))
+    (.append sb format-str)))
+
+(defn render-str-ln [^StringBuilder sb format-str & format-args]
+  (if (seq format-args)
+    (.append sb (apply format format-str format-args))
+    (.append sb format-str))
+  (.append sb "\n"))
