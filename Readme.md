@@ -20,14 +20,16 @@ Add an alias to your `deps.edn` like this :
  :aliases 
  {...
   :clofidence {:classpath-overrides {org.clojure/clojure nil}
-               :extra-deps {com.github.flow-storm/clojure {:mvn/version "1.11.1-14"}
-                            com.github.flow-storm/clofidence {:mvn/version "0.1.0"}}
+               :extra-deps {com.github.flow-storm/clojure {:mvn/version "LATEST"} ; >= 1.11.1-15
+                            com.github.flow-storm/clofidence {:mvn/version "LATEST"}}
                :exec-fn clofidence.main/run
                :exec-args {:report-name "MyApp"
                            :test-fn cognitect.test-runner.api/test
                            :test-fn-args [{}]}
                :jvm-opts ["-Dclojure.storm.instrumentOnlyPrefixes=my-app"
-                          "-Dclojure.storm.instrumentSkipPrefixes=my-app.unwanted-ns1,my-app.unwanted-ns2"]}}}
+                          "-Dclojure.storm.instrumentSkipPrefixes=my-app.unwanted-ns1,my-app.unwanted-ns2"
+                          "-Dclojure.storm.instrumentSkipRegex=.*test.*"
+                          ]}}}
 ```
 
 Please make sure you have the latest versions of ClojureStorm and Clofidence.
@@ -57,6 +59,7 @@ There is a lot going on in the configuration, so let's walk over it :
     * `instrumentOnlyPrefixes` should be a comma separated list of namespaces prefixes to include. Adding `my-app` will include everything 
     under `my-app.core` and `my-app.web.routes`.
     * `instrumentSkipPrefixes` can be used in the same way, but to skip unwanted namespaces.
+    * `instrumentSkipRegex` should be a regex to match namespaces to skip
     
 ## Reports
 
