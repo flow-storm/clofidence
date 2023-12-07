@@ -180,7 +180,11 @@
 
   (let [coords-cov (immutable-coords-coverage)
         all-registered-forms (interesting-forms opts)
-        _ (println (format "Captured a total of %d forms coordinates hits for %d forms." (total-coords-hits coords-cov) (count coords-cov)))
+        total-hits (total-coords-hits coords-cov)
+        _ (when (zero? total-hits)
+            (println "\n\n Nothing recorded, so no report will be generated. Did you setup clojure.storm.instrumentOnlyPrefixes correctly?")
+            (System/exit 1))
+        _ (println (format "Captured a total of %d forms coordinates hits for %d forms." total-hits (count coords-cov)))
         _ (println "Building and saving report...")
         report (make-report all-registered-forms coords-cov)
         report-render (renderer/render-report-to-string report opts)]
