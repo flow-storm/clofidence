@@ -34,7 +34,7 @@
   (let [bar-font-size 12
         max-bar-width-px 1000
         min-bar-width-px (* bar-font-size
-                            (+ 7 ;; the (NN %) text
+                            (+ 7 ;; the (NN %) text, calculate the longest namespace name
                              (->> (keys forms-details-by-ns)
                                   (mapv count)
                                   (apply max))))

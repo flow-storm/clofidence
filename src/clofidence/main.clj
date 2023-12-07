@@ -150,6 +150,12 @@
   (when details-str  (spit (format "%s-coverage.html" file-name) details-str))
   (when debug-str    (spit (format "%s.edn"          file-name) debug-str)))
 
+(defn- total-coords-hits [coords-cov]
+  (reduce-kv (fn [tot _ form-coords]
+               (+ tot (count form-coords)))
+   0
+   coords-cov))
+
 (defn run
 
   "Run with clj -X:coverage coverage/run :report-name \"my-app\"
@@ -169,10 +175,13 @@
   (let [tfn (requiring-resolve test-fn)]
     (println "Running all tests via " test-fn)
     (apply tfn test-fn-args))
-  (println "Tests done. Building and saving report...")
+
+  (println "Tests done.")
 
   (let [coords-cov (immutable-coords-coverage)
         all-registered-forms (interesting-forms opts)
+        _ (println (format "Captured a total of %d forms coordinates hits for %d forms." (total-coords-hits coords-cov) (count coords-cov)))
+        _ (println "Building and saving report...")
         report (make-report all-registered-forms coords-cov)
         report-render (renderer/render-report-to-string report opts)]
     (save report-name {:details-str report-render
