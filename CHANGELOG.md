@@ -4,6 +4,9 @@
 	
 ### New Features
 ### Changes
+
+    - Sort ns overview by coverage
+    
 ### Bugs fixed
 
 ## 0.2.0 (17-11-2023)

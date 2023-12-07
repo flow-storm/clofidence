@@ -40,12 +40,15 @@
                                   (apply max))))
         biggest-ns-sub-forms-cnt (->> (vals forms-details-by-ns)
                                       (mapv :ns-hittable-sub-forms-cnt)
-                                      (apply max))]
+                                      (apply max))
+        calc-covered-perc (fn [{:keys [ns-sub-form-hits ns-hittable-sub-forms-cnt]}]
+                            (if-not (pos? ns-hittable-sub-forms-cnt)
+                              0
+                              (int (* 100 (/ ns-sub-form-hits ns-hittable-sub-forms-cnt)))))
+        sorted-nses (sort-by (comp calc-covered-perc second) > (seq forms-details-by-ns))]
     (render-str-ln sb "<div class=\"overview\">")
-    (doseq [[ns-name {:keys [ns-sub-form-hits ns-hittable-sub-forms-cnt]}] forms-details-by-ns]
-      (let [coverded-perc (if-not (pos? ns-hittable-sub-forms-cnt)
-                            0
-                            (int (* 100 (/ ns-sub-form-hits ns-hittable-sub-forms-cnt))))
+    (doseq [[ns-name {:keys [ns-hittable-sub-forms-cnt] :as ns-data}] sorted-nses]
+      (let [coverded-perc (calc-covered-perc ns-data)
             ns-bar-scale (if-not (pos? biggest-ns-sub-forms-cnt)
                            0.0
                            (/ ns-hittable-sub-forms-cnt biggest-ns-sub-forms-cnt))
