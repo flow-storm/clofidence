@@ -5,7 +5,7 @@
             [clojure.spec.alpha :as s]))
 
 (def version (or (System/getenv "VERSION")
-                 "0.3.0"))
+                 "0.3.1"))
 
 (def target-dir "target")
 (def class-dir (str target-dir "/classes"))

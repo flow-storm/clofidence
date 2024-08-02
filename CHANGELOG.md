@@ -6,6 +6,12 @@
 ### Changes 
 ### Bugs fixed
 
+## 0.3.1 (02-08-2024)
+	
+### New Features
+### Changes 
+### Bugs fixed
+
     - Fix paths building for windows
 
 ## 0.3.0 (02-08-2024)
