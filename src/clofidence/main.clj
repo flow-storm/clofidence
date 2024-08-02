@@ -10,7 +10,8 @@
             [clofidence.utils :as utils]
             [clofidence.report-renderer :as renderer])
   (:import [clojure.storm Tracer FormRegistry Emitter]
-           [java.util HashMap HashSet]))
+           [java.util HashMap HashSet]
+           [java.io File]))
 
 (def coords-coverage
   "A map of form-id to a set of coordinates.
@@ -148,7 +149,7 @@
 
 
 (defn- save [index-html ns-details-reports {:keys [output-folder]
-                                            :or {output-folder "./clofidence-output"}}]
+                                            :or {output-folder "clofidence-output"}}]
   ;; ensure the output folder exists, if not, create it
   (let [out-folder-file (io/file output-folder)]
 
@@ -156,9 +157,9 @@
       (.mkdir out-folder-file))
 
     (let [out-folder-path (.getAbsolutePath out-folder-file)]
-      (spit (format "%s/index.html" out-folder-path) index-html)
+      (spit (str out-folder-path File/separator "index.html" ) index-html)
       (doseq [[ns-file-name ns-file-html] ns-details-reports]
-        (spit (format "%s/%s" out-folder-path ns-file-name) ns-file-html)))))
+        (spit (str out-folder-path File/separator ns-file-name) ns-file-html)))))
 
 (defn- total-coords-hits [coords-cov]
   (reduce-kv (fn [tot _ form-coords]
