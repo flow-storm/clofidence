@@ -5,6 +5,7 @@
 ### New Features
 ### Changes
 
+    - Create a index.html with an overview and one html per ns details to support big projects
     - Sort ns overview by coverage
     
 ### Bugs fixed

@@ -5,6 +5,7 @@
 
   (:require [clojure.string :as str]
             [clojure.set :as set]
+            [clojure.java.io :as io]
             [clofidence.form-pprinter :as form-pprinter]
             [clofidence.utils :as utils]
             [clofidence.report-renderer :as renderer])
@@ -146,9 +147,18 @@
 
 
 
-(defn- save [file-name {:keys [details-str debug-str]}]
-  (when details-str  (spit (format "%s-coverage.html" file-name) details-str))
-  (when debug-str    (spit (format "%s.edn"          file-name) debug-str)))
+(defn- save [index-html ns-details-reports {:keys [output-folder]
+                                            :or {output-folder "./clofidence-output"}}]
+  ;; ensure the output folder exists, if not, create it
+  (let [out-folder-file (io/file output-folder)]
+
+    (when-not (.exists out-folder-file)
+      (.mkdir out-folder-file))
+
+    (let [out-folder-path (.getAbsolutePath out-folder-file)]
+      (spit (format "%s/index.html" out-folder-path) index-html)
+      (doseq [[ns-file-name ns-file-html] ns-details-reports]
+        (spit (format "%s/%s" out-folder-path ns-file-name) ns-file-html)))))
 
 (defn- total-coords-hits [coords-cov]
   (reduce-kv (fn [tot _ form-coords]
@@ -158,23 +168,24 @@
 
 (defn run
 
-  "Run with clj -X:coverage coverage/run :report-name \"my-app\"
+  "Run with clj -X:clofidence clofidence/run :report-name \"my-app\"
 
   Will generate my-app-coverage.html
 
   Some extra options could be :
-  - :details?
-  - :debug?
   - :extra-forms #{my-def-macro defroute}"
 
-  [{:keys [test-fn test-fn-args report-name debug?]
+  [{:keys [test-fn test-fn-args]
     :or {test-fn-args []}
     :as opts}]
   (setup-storm)
 
   (let [tfn (requiring-resolve test-fn)]
     (println "Running all tests via " test-fn)
-    (apply tfn test-fn-args))
+    (try
+      (apply tfn test-fn-args)
+      (catch Throwable t
+        (println "ERROR: Tests function throwed an unhandled exception.\n Generating coverage report with what we got so far."))))
 
   (println "Tests done.")
 
@@ -187,9 +198,9 @@
         _ (println (format "Captured a total of %d forms coordinates hits for %d forms." total-hits (count coords-cov)))
         _ (println "Building and saving report...")
         report (make-report all-registered-forms coords-cov)
-        report-render (renderer/render-report-to-string report opts)]
-    (save report-name {:details-str report-render
-                       :debug-str   (when debug? (pr-str coords-cov))}))
+        report-index-html (renderer/render-index-html report opts)
+        ns-details-reports (renderer/render-namespaces-details-reports report)]
+    (save report-index-html ns-details-reports opts))
   (println "All done."))
 
 (comment
@@ -199,6 +210,7 @@
   (interesting-forms {})
   (run {:test-fn 'dev-tester/run-test
         :report-name "dev-tester"
+        :output-folder "./report-output"
         ;;:block-forms #{'defn}
         })
   )

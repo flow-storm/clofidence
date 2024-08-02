@@ -18,7 +18,7 @@ Add an alias to your `deps.edn` like this :
 ```clojure
 {....
  :aliases 
- {...
+ {:test {...}
   :clofidence {:classpath-overrides {org.clojure/clojure nil}
                :extra-deps {com.github.flow-storm/clojure {:mvn/version "LATEST"} ; >= 1.11.1-15
                             com.github.flow-storm/clofidence {:mvn/version "LATEST"}}
@@ -40,7 +40,7 @@ With __Clofidence__ configured, every time you want to generate a coverage repor
 $ clj -X:test:clofidence
 ```
 
-After running the tests, it should generate a file called `MyApp-coverage.html`
+After running the tests, it should generate a folder (by default called clofidence-output) with a index.html pointing to every ns details.
 
 ## Configuration
 
@@ -55,6 +55,7 @@ There is a lot going on in the configuration, so let's walk over it :
     * `:report-name` just configures the report header and file name
     * `:test-fn` tells Clofidence what function will run your tests
     * `:test-fn-args` are the arguments to the function defined in `:test-fn`
+    * `:output-folder` there an optional output folder, to provide a folder name, otherwise `clofidence-output` will be used
   * Finally we need to tell Clofidence which namespaces to include and which to skip for the coverage
     * `instrumentOnlyPrefixes` should be a comma separated list of namespaces prefixes to include. Adding `my-app` will include everything 
     under `my-app.core` and `my-app.web.routes`.
@@ -63,23 +64,29 @@ There is a lot going on in the configuration, so let's walk over it :
     
 ## Reports
 
-[Here](/examples/ClojureScript-coverage.html) you can download and see the **Clofidence** report for the ClojureScript compiler v1.11.60.
+[Here](/examples/clojurescript-1.60.tgz) you can download and see the **Clofidence** report for the ClojureScript compiler v1.11.60.
 
-As you can see, the report contains 3 sections, so let's go over them in more detail.
+Extracting that tarball will give you a folder containing a index.html with an overview pointing to the rest of the files
+which contains each namespace details.
 
-### Header counters
+### index.html
+#### Header counters
 
 The **Total forms hit rate** shows how many top level forms were at least touched once by the tests, out of all the instrumented forms.
 
 The **Total sub forms hit rate** shows how many sub-expressions were hit out of all instrumented ones.
 
-### Header overview
+#### Header overview
 
 The header overview shows one bar per namespace, and how much of it has been covered.
 
 The size of the bars is proportional to the amount of code in the namespaces.
 
-### Form details
+Clicking on the namespace name will take you to the namespace details.
+
+### Namespace detilas
+
+#### Form details
   
 Right after the overview, the report includes a list of all your instrumented forms, grouped by namespaces and sorted by coverage.
 
