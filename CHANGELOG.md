@@ -3,6 +3,12 @@
 ## master (unreleased)
 	
 ### New Features
+### Changes 
+### Bugs fixed
+
+## 0.3.0 (02-08-2024)
+	
+### New Features
 ### Changes
 
     - Create a index.html with an overview and one html per ns details to support big projects
