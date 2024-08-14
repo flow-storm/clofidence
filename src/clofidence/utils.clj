@@ -11,7 +11,8 @@
          (let [def-init-form (last form)]
            (when (seq? def-init-form)
              (when-let [fdi (first def-init-form)]
-               (#{"fn" "fn*"} (name fdi))))))))))
+               (and (symbol? fdi)
+                 (#{"fn" "fn*"} (name fdi)))))))))))
 
 (defn first-symb [form]
   (when (and (seq? form)
