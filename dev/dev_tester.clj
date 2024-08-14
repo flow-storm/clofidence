@@ -75,5 +75,11 @@
          sub
          (+ c d j e (hinted a c d j)))))
 
+(defn return-fn
+  []
+  (fn hello [] "hello"))
+
+(def what-was-said ((return-fn)))
+
 (defn run-test []
   (boo [1 "hello" 4]))

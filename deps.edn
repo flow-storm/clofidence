@@ -5,5 +5,12 @@
                  :extra-deps {com.github.flow-storm/clojure {:mvn/version "1.11.1-15"}}
                  :jvm-opts ["-Dclojure.storm.instrumentEnable=true"
                             "-Dclojure.storm.instrumentOnlyPrefixes=dev-tester"]}
+           :test {:classpath-overrides {org.clojure/clojure nil}
+                  :extra-deps          {com.github.flow-storm/clojure {:mvn/version "1.11.1-15"}}
+                  :exec-fn             clofidence.main/run
+                  :exec-args           {:report-name   "clofidence-dev-test"
+                                        :test-fn       dev-tester/run-test
+                                        :test-fn-args  []}
+                  :jvm-opts            ["-Dclojure.storm.instrumentOnlyPrefixes=dev-tester"]}
            :build {:extra-deps {io.github.clojure/tools.build {:git/tag "v0.9.6" :git/sha "8e78bcc"}}
                    :ns-default build}}}
