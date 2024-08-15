@@ -3,6 +3,9 @@
 ## master (unreleased)
 	
 ### New Features
+    
+    - Add ClojureScript support
+    
 ### Changes 
 ### Bugs fixed
 

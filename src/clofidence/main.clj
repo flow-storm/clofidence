@@ -3,112 +3,28 @@
   "Run all the test suite under ClojureStorm instrumentation and generate a report
   of our test coverage."
 
-  (:require [clojure.string :as str]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.java.io :as io]
             [clofidence.form-pprinter :as form-pprinter]
             [clofidence.utils :as utils]
-            [clofidence.report-renderer :as renderer])
-  (:import [clojure.storm Tracer FormRegistry Emitter]
-           [java.util HashMap HashSet]
-           [java.io File]))
+            [clofidence.report-renderer :as renderer]
+            [clofidence.tracer :as clofidence-tracer]
+            [ring.adapter.jetty :as jetty]
+            [ring.middleware.cors :refer [wrap-cors]])
+  (:import [java.io File]))
 
-(def coords-coverage
-  "A map of form-id to a set of coordinates.
-  This var uses a mutable HashMap and HashSet for performance so
-  only use `hit-form-coord` to add and `immutable-coords-coverage` to
-  read it."
-  (HashMap.))
-
-(defn- hit-form-coord [form-id coord]
-  (let [^HashSet form-coords (locking coords-coverage
-                               (if (.containsKey ^HashMap coords-coverage form-id)
-                                 (.get ^HashMap coords-coverage form-id)
-                                 (let [form-coords (HashSet.)]
-                                   (.put ^HashMap coords-coverage form-id form-coords)
-                                   form-coords)))]
-    (locking form-coords
-      (.add form-coords coord))))
-
-(defn- immutable-coords-coverage []
-  (locking coords-coverage
-    (persistent!
-     (reduce-kv (fn [r form-id form-coords]
-                  (let [imm-coords (locking form-coords
-                                     (persistent!
-                                      (reduce (fn [imc coord]
-                                                (conj! imc coord))
-                                              (transient #{})
-                                              form-coords)))]
-                    (assoc! r form-id imm-coords)))
-                (transient {})
-                coords-coverage))))
-
-(defn- setup-storm []
-  (Emitter/setInstrumentationEnable true)
-
-  (Emitter/setFnCallInstrumentationEnable false)
-  (Emitter/setFnReturnInstrumentationEnable true)
-  (Emitter/setExprInstrumentationEnable true)
-  (Emitter/setBindInstrumentationEnable false)
-
-  (Tracer/setTraceFnsCallbacks
-   {:trace-expr-fn (fn [_ _ coord form-id] (hit-form-coord form-id coord))
-    :trace-fn-return-fn (fn [_ _ coord form-id] (hit-form-coord form-id coord))}))
-
-(defn- interesting-forms
-
-  "Retrieve and select the forms that will be added to the report"
-
-  [{:keys [extra-forms block-forms]}]
-  (let [;; This is super hacky and should be solved in ClojureStorm.
-        ;; It is currently registering all forms under the namespace,
-        ;; which also contains forms added by Clojure that aren't found
-        ;; on user's source code, and we don't want them to show up on
-        ;; the reports.
-        default-blocked-forms #{"var" "ns" "if" ".resetMeta" "def"
-                                "." "defprotocol" "quote" "comment"}
-        blocked-forms (when block-forms
-                        (into default-blocked-forms (map name block-forms)))
-
-        interesting-symbs (into #{"defn" "defn-" "defmethod" "extend-type" "extend-protocol"
-                                  "deftype" "defrecord"}
-                                (map name extra-forms))
-
-        interesting-form? (if block-forms
-                            (fn [form]
-                              (when-let [symb (utils/first-symb form)]
-                                (let [symb-ns (namespace symb)
-                                      symb-name (name symb)]
-                                  (and (not= symb-ns "clojure.core")
-                                       (or (not (contains? blocked-forms symb-name))
-                                           (utils/def-fn? form))))))
-
-                            (fn [form]
-                              (when-let [symb (utils/first-symb form)]
-                                (let [symb-name (name symb)]
-                                  (or (interesting-symbs symb-name)
-                                      (utils/def-fn? form))))))]
-    (reduce (fn [r {:keys [form/id form/form] :as frm}]
-              (if (interesting-form? form)
-                (assoc r id frm)
-                r))
-            {}
-            (FormRegistry/getAllForms))))
-
-(defn- stringify-coord [coord-vec]
-  (str/join "," coord-vec))
 
 (defn- make-report [all-registered-forms coords-cov]
   (let [registered-forms-ids (into #{} (keys all-registered-forms))
         covered-forms-ids (into #{} (keys coords-cov))
         process-form (fn [x]
-                       (let [[form-id {:keys [form/ns form/form]}] x
+                       (let [[form-id {:keys [form/ns form/form form/emitted-coords]}] x
                              coords-hits (get coords-cov form-id)
-                             coords-hittable (-> form meta :clojure.storm/emitted-coords)
+                             coords-hittable (or emitted-coords
+                                                 (-> form meta :clojure.storm/emitted-coords))
                              form-tokens (->> (form-pprinter/pprint-tokens form)
                                               (mapv (fn [{:keys [coord kind] :as token}]
-                                                      (let [coord (when coord (stringify-coord coord))]
+                                                      (let [coord (when coord (utils/stringify-coord coord))]
                                                         (if (= kind :text)
                                                           (assoc token
                                                                  :cover-type
@@ -167,6 +83,63 @@
    0
    coords-cov))
 
+(defn report-and-save [coords-cov forms opts]
+  (let [total-hits (total-coords-hits coords-cov)]
+    (if (zero? total-hits)
+      (println "\n\n Nothing recorded, so no report will be generated. Did you setup clojure.storm.instrumentOnlyPrefixes correctly?")
+      (let [_ (println (format "Captured a total of %d forms coordinates hits for %d forms." total-hits (count coords-cov)))
+            _ (println "Building and saving report...")
+            report (make-report forms coords-cov)
+            report-index-html (renderer/render-index-html report opts)
+            ns-details-reports (renderer/render-namespaces-details-reports report)]
+        (save report-index-html ns-details-reports opts)
+        (println "All done.")))))
+
+(def cljs-server-port 7799)
+
+(defn run-cljs [config]
+  (println "Starting report server on" cljs-server-port)
+  (let [handle-req (fn [{:keys [request-method uri body]}]
+                     (try
+                       (cond
+                         (and (= request-method :post) (= uri "/report"))
+                         (let [{:keys [coords-cov forms]} (read (clojure.lang.LineNumberingPushbackReader. (io/reader body)))]
+                           (println (format "Tracing info submited coords-cov %d, forms %d" (count coords-cov) (count forms)))
+                           (report-and-save coords-cov forms config)
+                           {:status 200
+                            :body ""})
+
+                         (and (= request-method :get) (= uri "/config"))
+                         {:status 200
+                          :body (pr-str config)}
+
+                         :else
+                         (do
+                           (println "No endpoint for" request-method uri)
+                           {:status 404
+                            :body ""}))
+                       (catch Exception e
+                         (.printStackTrace e))))]
+    (jetty/run-jetty (wrap-cors handle-req
+                                :access-control-allow-origin [#".*"]
+                                :access-control-allow-methods [:get :post])
+                     {:port cljs-server-port
+                      :join? true})))
+
+(comment
+  ;; clojure
+  (report-and-save {1 #{"3" "3,2"}}
+                   {1 {:form/ns "my-app.core"
+                       :form/form (with-meta '(defn sum [a b] (+ a b)) {:clojure.storm/emitted-coords #{"3" "3,1" "3,2"}})}}
+                   {})
+
+  ;; clojurescript
+  (report-and-save {1 #{"3" "3,2"}}
+                   {1 {:form/ns "my-app.core"
+                       :form/form '(defn sum [a b] (+ a b))
+                       :form/emitted-coords #{"3" "3,1" "3,2"}}}
+                   {})
+  )
 (defn run
 
   "Run with clj -X:clofidence clofidence/run :report-name \"my-app\"
@@ -179,39 +152,20 @@
   [{:keys [test-fn test-fn-args]
     :or {test-fn-args []}
     :as opts}]
-  (setup-storm)
+  (require 'clofidence.storm)
 
   (let [tfn (requiring-resolve test-fn)]
     (println "Running all tests via " test-fn)
     (try
+      (clofidence-tracer/init)
       (apply tfn test-fn-args)
       (catch Throwable t
-        (println "ERROR: Tests function throwed an unhandled exception.\n Generating coverage report with what we got so far."))))
+        (println "ERROR: Tests function throwed an unhandled exception.\n Generating coverage report with what we got so far.")
+        (.printStackTrace t))))
 
   (println "Tests done.")
 
-  (let [coords-cov (immutable-coords-coverage)
-        all-registered-forms (interesting-forms opts)
-        total-hits (total-coords-hits coords-cov)
-        _ (when (zero? total-hits)
-            (println "\n\n Nothing recorded, so no report will be generated. Did you setup clojure.storm.instrumentOnlyPrefixes correctly?")
-            (System/exit 1))
-        _ (println (format "Captured a total of %d forms coordinates hits for %d forms." total-hits (count coords-cov)))
-        _ (println "Building and saving report...")
-        report (make-report all-registered-forms coords-cov)
-        report-index-html (renderer/render-index-html report opts)
-        ns-details-reports (renderer/render-namespaces-details-reports report)]
-    (save report-index-html ns-details-reports opts))
-  (println "All done."))
-
-(comment
-  (require '[dev-tester])
-
-
-  (interesting-forms {})
-  (run {:test-fn 'dev-tester/run-test
-        :report-name "dev-tester"
-        :output-folder "./report-output"
-        ;;:block-forms #{'defn}
-        })
-  )
+  (let [registered-forms (requiring-resolve 'clofidence.storm/registered-forms)
+        coords-cov (clofidence-tracer/immutable-coords-coverage)
+        interesting-forms (clofidence-tracer/interesting-forms (registered-forms) opts)]
+    (report-and-save coords-cov interesting-forms opts)))

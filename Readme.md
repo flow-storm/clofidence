@@ -1,15 +1,16 @@
 # Clofidence
 
-Bolster your Clojure test suite confidence.
+Bolster your Clojure[Script] test suite confidence. 
 
 ![screenshot](./images/screenshot.png)
 
-Clofidence will instrument your codebase using [ClojureStorm](https://github.com/flow-storm/clojure), 
+Clofidence is a test coverage tool for Clojure and ClojureScript. 
+It will instrument your codebase using [ClojureStorm](https://github.com/flow-storm/clojure) or [ClojureScriptStorm](https://github.com/flow-storm/clojurescript), 
 then run your tests and generate a test coverage report.
 
 [![Clojars Project](https://img.shields.io/clojars/v/com.github.flow-storm/clofidence.svg)](https://clojars.org/com.github.flow-storm/clofidence)
 
-## Quick start
+## Clojure quick start
 
 ### With the Clojure Cli
 
@@ -41,8 +42,9 @@ $ clj -X:test:clofidence
 ```
 
 After running the tests, it should generate a folder (by default called clofidence-output) with a index.html pointing to every ns details.
+Click [here](/examples/clojurescript-1.60.tgz) to download the Clofidence report for the ClojureScript compiler v1.11.60 as an example.
 
-## Configuration
+### Configuration
 
 The example above assumes your aliases contain a `:test` alias that will put the tests paths and test-runner 
 on the classpath, but this will depend on your particular test setup.
@@ -61,6 +63,98 @@ There is a lot going on in the configuration, so let's walk over it :
     under `my-app.core` and `my-app.web.routes`.
     * `instrumentSkipPrefixes` can be used in the same way, but to skip unwanted namespaces.
     * `instrumentSkipRegex` should be a regex to match namespaces to skip
+
+## ClojureScript quick start 
+
+### With shadow-cljs
+
+Minimum requirements :
+
+* nodejs >= 18.0.0 (when running tests with node)
+* shadow-cljs >= 2.25.4
+    
+Add an alias to your `deps.edn` like this :
+
+```clojure
+{....
+ :aliases 
+ {:test {...}
+  :clofidence {:classpath-overrides {org.clojure/clojurescript nil}
+               :extra-deps {thheller/shadow-cljs {:mvn/version "2.28.10" :exclusions [org.clojure/clojurescript]}
+                            com.github.flow-storm/clojurescript {:mvn/version "LATEST"} ;; >= 1.11.132-6
+                            com.github.flow-storm/clofidence {:mvn/version "LATEST"}}
+               :exec-fn clofidence.main/run-cljs
+               :exec-args {:report-name "MyApp"}
+               :jvm-opts ["-Dcljs.storm.instrumentOnlyPrefixes=org.foo,dev"
+                          "-Dcljs.storm.instrumentSkipPrefixes=dev.skipped"
+                          "-Dcljs.storm.instrumentSkipRegex=.*test.*"
+                          "-Dcljs.storm.instrumentEnable=true"]}}}
+```
+
+Modify your shadow-cljs.edn test builds (nodejs and browser currently supported) like this :
+
+```clojure
+{:deps {:aliases [:clofidence :test]}
+ :dev-http {8021 "out/test"}
+ :builds
+ {:test-browser {:target :browser-test
+                 :test-dir "out/test"
+                 :runner-ns clofidence.shadow-test.browser
+                 :devtools {:preloads [clofidence.storm]}}
+  :test-node {:target :node-test
+              :output-to "out/node-tests.js"
+              :main clofidence.shadow-test.node/main
+              :devtools {:preloads [clofidence.storm]}}}}
+```
+
+And then spawn a clofidence server with :
+
+```bash
+$ clj -X:test:clofidence
+```
+
+You should now be able to run your nodejs or browser tests as you normally do with shadow-cljs which for the browser will be something like :
+
+```bash
+$ npx shadow-cljs compile :test-browser # compile the tests
+$ npx shadow-cljs server # start the dev server
+$ firefox http://localhost:8021 # run the tests 
+```
+
+while for nodejs will be something like :
+
+```bash
+$ npx shadow-cljs compile :test-node # compile the tests
+$ node out/node-tests.js # run the tests
+```
+After the tests run on the JS runtime, the results will be sent to your Clofidence server (the one you spawned before) which will generate
+the reports on disk in its current folder.
+
+You can now open your tests reports with something like :
+
+```bash
+$ firefox clofidence-output/index.html
+```
+
+### Configuration
+
+The example above assumes your aliases contain a `:test` alias that will put the tests paths
+on the classpath, but this will depend on your particular test setup.
+
+There is a lot going on in the configuration, so let's walk over it :
+
+#### On deps.edn
+  * First, we need to disable the official ClojureScript compiler, since we are going to replace it with ClojureScriptStorm
+  * Next, we add the latest ClojureScriptStorm, Clofidence and shadow-cljs dependencies, excluidng the official ClojureScript compiler that comes with shadow-cljs
+  * `:exec-fn` and `:exec-args` tells the Clojure cli to run the clofidence server and with what arguments it should call it
+    * `:report-name` just configures the report header and file name
+    * `:output-folder` there an optional output folder, to provide a folder name, otherwise `clofidence-output` will be used
+  * Finally we need to tell Clofidence which namespaces to include and which to skip for the coverage
+    * `instrumentOnlyPrefixes` should be a comma separated list of namespaces prefixes to include. Adding `my-app` will include everything 
+    under `my-app.core` and `my-app.web.routes`.
+    * `instrumentSkipPrefixes` can be used in the same way, but to skip unwanted namespaces.
+    * `instrumentSkipRegex` should be a regex to match namespaces to skip
+        
     
 ## Reports
 
@@ -70,6 +164,7 @@ Extracting that tarball will give you a folder containing a index.html with an o
 which contains each namespace details.
 
 ### index.html
+
 #### Header counters
 
 The **Total forms hit rate** shows how many top level forms were at least touched once by the tests, out of all the instrumented forms.

@@ -1,5 +1,8 @@
 {:paths ["src"]
- :deps {com.github.flow-storm/hansel {:mvn/version "0.1.79"}}
+ :deps {com.github.flow-storm/hansel {:mvn/version "0.1.79"}
+        ring/ring-core {:mvn/version "1.12.2"}
+        ring-cors/ring-cors {:mvn/version "0.1.13"}
+        ring/ring-jetty-adapter {:mvn/version "1.12.2"}}
  :aliases {:dev {:classpath-overrides {org.clojure/clojure nil}
                  :extra-paths ["dev"]
                  :extra-deps {com.github.flow-storm/clojure {:mvn/version "1.11.1-15"}}

@@ -1,5 +1,16 @@
 (ns clofidence.report-renderer
-  (:require [clofidence.utils :as utils :refer [render-str-ln render-str]]))
+  (:require [clofidence.utils :as utils]))
+
+(defn render-str [^StringBuilder sb format-str & format-args]
+   (if (seq format-args)
+     (.append sb (apply format format-str format-args))
+     (.append sb format-str)))
+
+(defn render-str-ln [^StringBuilder sb format-str & format-args]
+  (if (seq format-args)
+    (.append sb (apply format format-str format-args))
+    (.append sb format-str))
+  (.append sb "\n"))
 
 (def report-styles
   "body {font-family: sans; background-color: #3f474f; color: #c9d1d9}
