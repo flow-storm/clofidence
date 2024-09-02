@@ -4,6 +4,13 @@
 	
 ### New Features
     
+### Changes 
+### Bugs fixed
+
+## 0.4.0 (02-09-2024)
+	
+### New Features
+    
     - Add ClojureScript support
     
 ### Changes 
