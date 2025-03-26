@@ -209,3 +209,8 @@ by adding them to the set, like `:block-forms #{my-annoying-form}`.
 
 Even with `:block-forms #{}` there are some forms which are always excluded, which are `ns`, `defprotocol`, `quote`, `comment`, `def` with constants
 which doesn't make sense.
+
+## Known limitations
+
+Expressions that throw like (assert false) aren't being marked green even if they are "hit", because the don't return.
+Clofidence marks as green every expression that evaluated, which assert doesn't because it throws.
