@@ -93,7 +93,8 @@
             report-index-html (renderer/render-index-html report opts)
             ns-details-reports (renderer/render-namespaces-details-reports report)]
         (save report-index-html ns-details-reports opts)
-        (println "All done.")))))
+        (println "All done")
+        (System/exit 0)))))
 
 (def cljs-server-port 7799)
 
