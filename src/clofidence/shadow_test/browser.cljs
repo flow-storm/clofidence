@@ -21,7 +21,6 @@
            (.then (.text config-resp)
                   (fn [config-str]
                     (let [config-map (edn/read-string config-str)]
-                      (clofidence-tracer/init)
                       (st/run-all-tests (ctd/init! "test-root"))
                       (js/fetch config/report-url #js {:method "POST"
                                                        :body (clofidence-storm/report-client-data config-map)}))))

@@ -157,7 +157,6 @@
   (let [tfn (requiring-resolve test-fn)]
     (println "Running all tests via " test-fn)
     (try
-      (clofidence-tracer/init)
       (apply tfn test-fn-args)
       (catch Throwable t
         (println "ERROR: Tests function throwed an unhandled exception.\n Generating coverage report with what we got so far.")

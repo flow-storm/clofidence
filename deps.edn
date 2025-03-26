@@ -5,11 +5,12 @@
         ring/ring-jetty-adapter {:mvn/version "1.12.2"}}
  :aliases {:dev {:classpath-overrides {org.clojure/clojure nil}
                  :extra-paths ["dev"]
-                 :extra-deps {com.github.flow-storm/clojure {:mvn/version "1.11.1-15"}}
+                 :extra-deps {com.github.flow-storm/clojure {:mvn/version "1.12.0-9"}}
                  :jvm-opts ["-Dclojure.storm.instrumentEnable=true"
+                            "-Dclojure.storm.instrumentAutoPrefixes=false"
                             "-Dclojure.storm.instrumentOnlyPrefixes=dev-tester"]}
            :test {:classpath-overrides {org.clojure/clojure nil}
-                  :extra-deps          {com.github.flow-storm/clojure {:mvn/version "1.11.1-15"}}
+                  :extra-deps          {com.github.flow-storm/clojure {:mvn/version "1.12.0-9"}}
                   :exec-fn             clofidence.main/run
                   :exec-args           {:report-name   "clofidence-dev-test"
                                         :test-fn       dev-tester/run-test

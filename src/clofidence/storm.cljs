@@ -6,6 +6,7 @@
 
 (set! cljs-storm-tracer/trace-expr-fn (fn [_ _ coord form-id] (clofidence-tracer/hit-form-coord form-id coord)))
 (set! cljs-storm-tracer/trace-fn-return-fn (fn [_ _ coord form-id] (clofidence-tracer/hit-form-coord form-id coord)))
+(set! cljs-storm-tracer/trace-fn-unwind-fn (fn [_ _ coord form-id] (clofidence-tracer/hit-form-coord form-id coord)))
 (set! cljs-storm-tracer/trace-form-init-fn (fn [{:keys [form-id ns form emitted-coords]}]
                                              (swap! *cljs-forms-registry assoc form-id {:form/id form-id
                                                                                         :form/ns ns

@@ -5,7 +5,10 @@
 ### New Features
     
 ### Changes 
+
 ### Bugs fixed
+
+    - Capture and mark functions that unwinded instead of return
 
 ## 0.4.0 (02-09-2024)
 	

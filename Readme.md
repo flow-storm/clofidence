@@ -21,13 +21,14 @@ Add an alias to your `deps.edn` like this :
  :aliases 
  {:test {...}
   :clofidence {:classpath-overrides {org.clojure/clojure nil}
-               :extra-deps {com.github.flow-storm/clojure {:mvn/version "LATEST"} ; >= 1.11.1-15
+               :extra-deps {com.github.flow-storm/clojure {:mvn/version "1.12.0-9"}
                             com.github.flow-storm/clofidence {:mvn/version "LATEST"}}
                :exec-fn clofidence.main/run
                :exec-args {:report-name "MyApp"
                            :test-fn cognitect.test-runner.api/test
                            :test-fn-args [{}]}
-               :jvm-opts ["-Dclojure.storm.instrumentOnlyPrefixes=my-app"
+               :jvm-opts ["-Dclojure.storm.instrumentAutoPrefixes=false"
+                          "-Dclojure.storm.instrumentOnlyPrefixes=my-app"
                           "-Dclojure.storm.instrumentSkipPrefixes=my-app.unwanted-ns1,my-app.unwanted-ns2"
                           "-Dclojure.storm.instrumentSkipRegex=.*test.*"
                           ]}}}
@@ -81,7 +82,7 @@ Add an alias to your `deps.edn` like this :
  {:test {...}
   :clofidence {:classpath-overrides {org.clojure/clojurescript nil}
                :extra-deps {thheller/shadow-cljs {:mvn/version "2.28.10" :exclusions [org.clojure/clojurescript]}
-                            com.github.flow-storm/clojurescript {:mvn/version "LATEST"} ;; >= 1.11.132-6
+                            com.github.flow-storm/clojurescript {:mvn/version "1.11.132-9"} ;; checkout latest
                             com.github.flow-storm/clofidence {:mvn/version "LATEST"}}
                :exec-fn clofidence.main/run-cljs
                :exec-args {:report-name "MyApp"}

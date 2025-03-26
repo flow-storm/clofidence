@@ -98,7 +98,6 @@
            (.then (.text config-resp)
                   (fn [config-str]
                     (let [config-map (edn/read-string config-str)
-                          _ (clofidence-tracer/init)
                           _ (apply shadow-node-main args) ;; run the tests
                           ;; opts (parse-args args)
                           ;; _ (reset-test-data!)

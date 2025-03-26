@@ -12,6 +12,9 @@
   #?(:clj (alter-var-root #'coords-coverage (constantly (utils/make-mutable-map)))
      :cljs (set! coords-coverage (utils/make-mutable-map))))
 
+;; initialize coords-coverage as soon as we load this ns
+(init)
+
 (defn hit-form-coord [form-id coord]
   (let [form-coords (locking coords-coverage
                       (if (utils/mutable-map-contains? coords-coverage form-id)

@@ -50,6 +50,20 @@
 (defn hinted [a ^long b c ^long d]
   (+ a c (+ b d)))
 
+(defn throwing-function []
+  (throw (ex-info "Dang" {})))
+
+(defn asserting-fn [v]
+  (cond
+    (= 42 v) 42
+    :else (assert false)))
+
+(defn return-fn
+  []
+  (fn hello [] "hello"))
+
+(def what-was-said ((return-fn)))
+
 (defn boo [xs]
   (let [a 25
         yy (other-function 4 5)
@@ -67,7 +81,9 @@
                  sum 0]
             (if (> i 0)
               (recur (dec i) (+ sum i))
-              sum))]
+              sum))
+        xxx (try (throwing-function) (catch Exception e))
+        xxxx (try (asserting-fn 42) (asserting-fn 43) (catch Throwable e))]
     (->> xs
          (map (fn [x] (+ 1 (do-it x))))
          (reduce + )
@@ -75,11 +91,6 @@
          sub
          (+ c d j e (hinted a c d j)))))
 
-(defn return-fn
-  []
-  (fn hello [] "hello"))
-
-(def what-was-said ((return-fn)))
 
 (defn run-test []
   (boo [1 "hello" 4]))
