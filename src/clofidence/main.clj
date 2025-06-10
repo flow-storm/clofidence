@@ -104,7 +104,8 @@
                      (try
                        (cond
                          (and (= request-method :post) (= uri "/report"))
-                         (let [{:keys [coords-cov forms]} (read (clojure.lang.LineNumberingPushbackReader. (io/reader body)))]
+                         (let [{:keys [coords-cov forms]} (with-redefs [*default-data-reader-fn* tagged-literal]
+                                                            (read (clojure.lang.LineNumberingPushbackReader. (io/reader body))))]
                            (println (format "Tracing info submited coords-cov %d, forms %d" (count coords-cov) (count forms)))
                            (report-and-save coords-cov forms config)
                            {:status 200
