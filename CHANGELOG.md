@@ -8,6 +8,24 @@
 
 ### Bugs fixed
 
+## 0.4.2 (11-06-2025)
+	
+### New Features
+    
+### Changes 
+
+### Bugs fixed
+
+    - Fix unknown tag literals from throwing in report generation
+
+## 0.4.1 (26-03-2025)
+	
+### New Features
+    
+### Changes 
+
+### Bugs fixed
+
     - Capture and mark functions that unwinded instead of return
 
 ## 0.4.0 (02-09-2024)
