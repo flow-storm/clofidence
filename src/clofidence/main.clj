@@ -98,14 +98,20 @@
 
 (def cljs-server-port 7799)
 
+(defn read-with-tags
+  "Read data from a reader with *default-data-reader-fn* bound to tagged-literal.
+   This ensures that unknown tagged literals in the data will be handled properly."
+  [reader]
+  (binding [*default-data-reader-fn* tagged-literal]
+    (read (clojure.lang.LineNumberingPushbackReader. reader))))
+
 (defn run-cljs [config]
   (println "Starting report server on" cljs-server-port)
   (let [handle-req (fn [{:keys [request-method uri body]}]
                      (try
                        (cond
                          (and (= request-method :post) (= uri "/report"))
-                         (let [{:keys [coords-cov forms]} (with-redefs [*default-data-reader-fn* tagged-literal]
-                                                            (read (clojure.lang.LineNumberingPushbackReader. (io/reader body))))]
+                         (let [{:keys [coords-cov forms]} (read-with-tags (io/reader body))]
                            (println (format "Tracing info submited coords-cov %d, forms %d" (count coords-cov) (count forms)))
                            (report-and-save coords-cov forms config)
                            {:status 200
