@@ -1,6 +1,5 @@
 (ns clofidence.main-test
   (:require [clojure.test :refer :all]
-            [clojure.java.io :as io]
             [clofidence.main :as main])
   (:import [java.io StringReader]))
 
