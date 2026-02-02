@@ -180,7 +180,7 @@ The size of the bars is proportional to the amount of code in the namespaces.
 
 Clicking on the namespace name will take you to the namespace details.
 
-### Namespace detilas
+### Namespace details
 
 #### Form details
   
